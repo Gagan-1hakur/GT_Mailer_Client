@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
-
-// import PageTitle from './components/PageTitle';
 import SignIn from './pages/Authentication/SignIn';
 import SignUp from './pages/Authentication/SignUp';
+import DefaultLayout from './layout/DefaultLayout';
+import Loader from './components/Loader';
+import AddContact from './pages/Audience/AddContact';
+// import PageTitle from './components/PageTitle';
+
 // import Calendar from './pages/Calendar';
 // import Chart from './pages/Chart';
 // import ECommerce from './pages/Dashboard/ECommerce';
@@ -14,9 +17,7 @@ import SignUp from './pages/Authentication/SignUp';
 // import Tables from './pages/Tables';
 // import Alerts from './pages/UiElements/Alerts';
 // import Buttons from './pages/UiElements/Buttons';
-import DefaultLayout from './layout/DefaultLayout';
-import Loader from './components/Loader';
-import AddContact from './pages/Audiance/AddContact';
+
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -47,7 +48,7 @@ console.log(pathname)
       ) : (
         <DefaultLayout>
           <Routes>
-            <Route path="/audiance/addContact" element={<AddContact />} />
+            <Route path="/audience/addContact" element={<AddContact />} />
             {/* Other routes go here */}
           </Routes>
         </DefaultLayout>
