@@ -5,6 +5,7 @@ import SignUp from './pages/Authentication/SignUp';
 import DefaultLayout from './layout/DefaultLayout';
 import Loader from './components/Loader';
 import AddContact from './pages/Audience/AddContact';
+import Templates from './pages/Campaigns/Templates';
 // import PageTitle from './components/PageTitle';
 
 // import Calendar from './pages/Calendar';
@@ -49,6 +50,7 @@ console.log(pathname)
         <DefaultLayout>
           <Routes>
             <Route path="/audience/addContact" element={<AddContact />} />
+            <Route path="/campaigns/templates" element={<Templates />} />
             {/* Other routes go here */}
           </Routes>
         </DefaultLayout>
