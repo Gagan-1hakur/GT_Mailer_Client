@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { FiPlus, FiEdit, FiTrash, FiDownload, FiArrowDownCircle } from "react-icons/fi";
+import {
+  FiPlus,
+  FiEdit,
+  FiTrash,
+  FiDownload,
+  FiArrowDownCircle,
+} from "react-icons/fi";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
 
 let contactIdCounter = 1; // Counter for unique numerical ID
@@ -68,9 +74,19 @@ const AddContact = () => {
 
     // Add new contact with a unique numerical ID
     const creationDate = new Date().toLocaleString();
-    const contactWithId = { ...newContact, id: contactIdCounter++, creationDate };
+    const contactWithId = {
+      ...newContact,
+      id: contactIdCounter++,
+      creationDate,
+    };
     setContacts([...contacts, contactWithId]);
-    setNewContact({ firstName: "", lastName: "", email: "", mobile: "", group: "" }); // Clear the form
+    setNewContact({
+      firstName: "",
+      lastName: "",
+      email: "",
+      mobile: "",
+      group: "",
+    }); // Clear the form
   };
 
   const openEditModal = (contact) => {
@@ -102,7 +118,7 @@ const AddContact = () => {
         const rows = content.split("\n");
         const uploadedContacts = rows.map((row) => {
           const [firstName, lastName, email, mobile, group] = row.split(",");
-          
+
           // Validate fields and check for duplicates
           if (
             email &&
@@ -121,11 +137,16 @@ const AddContact = () => {
               creationDate: new Date().toLocaleString(),
             };
           } else if (isDuplicateContact(email, mobile)) {
-            alert(`Duplicate entry found for email: ${email} or mobile: ${mobile}`);
+            alert(
+              `Duplicate entry found for email: ${email} or mobile: ${mobile}`
+            );
           }
           return null;
         });
-        setContacts([...contacts, ...uploadedContacts.filter((contact) => contact !== null)]);
+        setContacts([
+          ...contacts,
+          ...uploadedContacts.filter((contact) => contact !== null),
+        ]);
       };
       reader.readAsText(file);
     }
@@ -150,9 +171,13 @@ const AddContact = () => {
   const sortedContacts = [...filteredContacts].sort((a, b) => {
     switch (sortOption) {
       case "name-asc":
-        return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        return `${a.firstName} ${a.lastName}`.localeCompare(
+          `${b.firstName} ${b.lastName}`
+        );
       case "name-desc":
-        return `${b.firstName} ${b.lastName}`.localeCompare(`${a.firstName} ${a.lastName}`);
+        return `${b.firstName} ${b.lastName}`.localeCompare(
+          `${a.firstName} ${a.lastName}`
+        );
       case "group-asc":
         return a.group.localeCompare(b.group);
       case "group-desc":
@@ -168,7 +193,8 @@ const AddContact = () => {
 
   // Export Contacts to CSV
   const exportContacts = () => {
-    const headers = "ID,First Name,Last Name,Email,Mobile,Group,Creation Date\n";
+    const headers =
+      "ID,First Name,Last Name,Email,Mobile,Group,Creation Date\n";
     const csvContent =
       headers +
       sortedContacts
@@ -191,7 +217,9 @@ const AddContact = () => {
     <>
       <Breadcrumb pageName="Add Contact" />
       <div className="p-8 sm:p-10">
-        <h1 className="text-3xl font-bold text-blue-600 mb-6">Manage Your Contacts</h1>
+        <h1 className="text-3xl font-bold text-blue-600 mb-6">
+          Manage Your Contacts
+        </h1>
 
         {/* Step 1: Create Group */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
@@ -215,7 +243,9 @@ const AddContact = () => {
 
         {/* Step 2: Add Contact */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">Step 2: Add a New Contact</h2>
+          <h2 className="text-lg font-semibold mb-3">
+            Step 2: Add a New Contact
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input
               type="text"
@@ -280,7 +310,9 @@ const AddContact = () => {
 
         {/* Additional Option: Upload Contacts */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">Upload Contacts via CSV</h2>
+          <h2 className="text-lg font-semibold mb-3">
+            Upload Contacts via CSV
+          </h2>
           <div className="flex items-center gap-2">
             <input
               type="file"
@@ -349,7 +381,10 @@ const AddContact = () => {
             </thead>
             <tbody>
               {sortedContacts.map((contact, index) => (
-                <tr key={index} className="border-t hover:bg-gray-100 transition-colors">
+                <tr
+                  key={index}
+                  className="border-t hover:bg-gray-100 transition-colors"
+                >
                   <td className="p-2">{contact.id}</td>
                   <td className="p-2">{contact.firstName}</td>
                   <td className="p-2">{contact.lastName}</td>
@@ -388,33 +423,43 @@ const AddContact = () => {
                 type="text"
                 placeholder="First Name"
                 value={editContact.firstName}
-                onChange={(e) => setEditContact({ ...editContact, firstName: e.target.value })}
+                onChange={(e) =>
+                  setEditContact({ ...editContact, firstName: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Last Name"
                 value={editContact.lastName}
-                onChange={(e) => setEditContact({ ...editContact, lastName: e.target.value })}
+                onChange={(e) =>
+                  setEditContact({ ...editContact, lastName: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <input
                 type="email"
                 placeholder="Email"
                 value={editContact.email}
-                onChange={(e) => setEditContact({ ...editContact, email: e.target.value })}
+                onChange={(e) =>
+                  setEditContact({ ...editContact, email: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <input
                 type="text"
                 placeholder="Mobile Number"
                 value={editContact.mobile}
-                onChange={(e) => setEditContact({ ...editContact, mobile: e.target.value })}
+                onChange={(e) =>
+                  setEditContact({ ...editContact, mobile: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <select
                 value={editContact.group}
-                onChange={(e) => setEditContact({ ...editContact, group: e.target.value })}
+                onChange={(e) =>
+                  setEditContact({ ...editContact, group: e.target.value })
+                }
                 className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select Group</option>
