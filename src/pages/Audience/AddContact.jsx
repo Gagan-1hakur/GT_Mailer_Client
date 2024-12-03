@@ -1,19 +1,10 @@
-import { useState } from "react";
-import {
-  FiPlus,
-  FiEdit,
-  FiTrash,
-  FiDownload,
-  FiArrowDownCircle,
-} from "react-icons/fi";
+import React, { useState, useEffect, useRef } from "react";
+import { FiPlus, FiDownload, FiUpload } from "react-icons/fi";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
-
-let contactIdCounter = 1; // Counter for unique numerical ID
 
 const AddContact = () => {
   const [groupName, setGroupName] = useState("");
   const [groupList, setGroupList] = useState([]);
-  const [contacts, setContacts] = useState([]);
   const [newContact, setNewContact] = useState({
     firstName: "",
     lastName: "",
@@ -21,137 +12,201 @@ const AddContact = () => {
     mobile: "",
     group: "",
   });
-  const [editContact, setEditContact] = useState(null);
-  const [filterGroup, setFilterGroup] = useState("");
-  const [sortOption, setSortOption] = useState("name-asc");
+  const [csvFile, setCsvFile] = useState(null);
+  const [skipReport, setSkipReport] = useState([]);
+  const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  // Fetch groups from backend
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/contact/groups");
+      const data = await response.json();
+      if (response.ok) {
+        setGroupList(data.groups || []);
+      } else {
+        console.error("Failed to fetch groups:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching groups:", error.message);
+    }
+  };
+
+  // Handle adding a new group
   const handleAddGroup = () => {
-    if (groupName.trim() === "") {
+    if (!groupName.trim()) {
       alert("Group name cannot be empty.");
       return;
     }
+
     if (groupList.includes(groupName)) {
       alert("This group name already exists.");
       return;
     }
+
     setGroupList([...groupList, groupName]);
-    setGroupName(""); // Clear input after adding
+    setGroupName("");
   };
 
-  const isDuplicateContact = (email, mobile) => {
-    return contacts.some(
-      (contact) => contact.email === email || contact.mobile === mobile
-    );
-  };
+  // Handle adding a new contact
+  const handleAddContact = async () => {
+    const { firstName, lastName, email, mobile, group } = newContact;
 
-  const handleAddContact = () => {
-    const { email, mobile, group } = newContact;
-
-    // Validate email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      alert("Please enter a valid email.");
+    if (!email || !group) {
+      alert("Email and Group are required.");
       return;
     }
 
-    // Validate mobile (if provided)
     if (mobile && (!/^\d{10}$/.test(mobile) || mobile.length !== 10)) {
-      alert("Mobile number must be exactly 10 digits.");
+      alert("Invalid mobile number.");
       return;
     }
 
-    // Validate group
-    if (!group) {
-      alert("Please select a group.");
-      return;
+    try {
+      const response = await fetch("http://localhost:8000/contact/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ firstName, lastName, email, mobile, group }),
+      });
+
+      if (response.ok) {
+        alert("Contact added successfully!");
+        setNewContact({
+          firstName: "",
+          lastName: "",
+          email: "",
+          mobile: "",
+          group: "",
+        });
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Error adding contact:", error.message);
+      alert("Failed to add contact. Please try again.");
     }
-
-    // Check for duplicates
-    if (isDuplicateContact(email, mobile)) {
-      alert("This email or mobile number already exists in the contact list.");
-      return;
-    }
-
-    // Add new contact with a unique numerical ID
-    const creationDate = new Date().toLocaleString();
-    const contactWithId = {
-      ...newContact,
-      id: contactIdCounter++,
-      creationDate,
-    };
-    setContacts([...contacts, contactWithId]);
-    setNewContact({
-      firstName: "",
-      lastName: "",
-      email: "",
-      mobile: "",
-      group: "",
-    }); // Clear the form
   };
 
-  const openEditModal = (contact) => {
-    setEditContact(contact);
-  };
-
-  const closeEditModal = () => {
-    setEditContact(null);
-  };
-
-  const handleSaveEdit = () => {
-    const updatedContacts = contacts.map((contact) =>
-      contact.id === editContact.id ? editContact : contact
-    );
-    setContacts(updatedContacts);
-    closeEditModal();
-  };
-
-  const handleDeleteContact = (index) => {
-    setContacts(contacts.filter((_, i) => i !== index));
-  };
-
-  const handleFileUpload = (e) => {
+  // Handle file selection
+  const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target.result;
-        const rows = content.split("\n");
-        const uploadedContacts = rows.map((row) => {
-          const [firstName, lastName, email, mobile, group] = row.split(",");
-
-          // Validate fields and check for duplicates
-          if (
-            email &&
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-            (!mobile || /^\d{10}$/.test(mobile)) &&
-            group &&
-            !isDuplicateContact(email, mobile)
-          ) {
-            return {
-              id: contactIdCounter++, // Assign a numerical unique ID to each uploaded contact
-              firstName: firstName?.trim() || "",
-              lastName: lastName?.trim() || "",
-              email: email?.trim(),
-              mobile: mobile?.trim() || "",
-              group: group?.trim(),
-              creationDate: new Date().toLocaleString(),
-            };
-          } else if (isDuplicateContact(email, mobile)) {
-            alert(
-              `Duplicate entry found for email: ${email} or mobile: ${mobile}`
-            );
-          }
-          return null;
-        });
-        setContacts([
-          ...contacts,
-          ...uploadedContacts.filter((contact) => contact !== null),
-        ]);
-      };
-      reader.readAsText(file);
+      setCsvFile(file);
     }
   };
 
+  // Validate CSV rows
+  const validateCsvRow = (row) => {
+    const [firstName, lastName, email, mobile, group] = row.map((col) =>
+      col.trim()
+    );
+
+    if (!email || !group) {
+      return { valid: false, reason: "Missing required fields" };
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { valid: false, reason: "Invalid email format" };
+    }
+
+    if (mobile && (!/^\d{10}$/.test(mobile) || mobile.length !== 10)) {
+      return { valid: false, reason: "Invalid mobile number" };
+    }
+
+    return {
+      valid: true,
+      contact: { firstName, lastName, email, mobile, group },
+    };
+  };
+
+  // Handle file upload
+  const handleFileUpload = async () => {
+    if (!csvFile) {
+      alert("Please select a CSV file first.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const rows = event.target.result.split("\n").map((row) => row.split(","));
+      const validContacts = [];
+      const skippedRows = [];
+
+      for (const row of rows.slice(1)) {
+        const validation = validateCsvRow(row);
+        if (validation.valid) {
+          validContacts.push(validation.contact);
+        } else {
+          skippedRows.push({ row, reason: validation.reason });
+        }
+      }
+
+      if (validContacts.length === 0) {
+        alert("No valid contacts found in the CSV file.");
+        return;
+      }
+
+      // Upload valid contacts to the backend
+      try {
+        for (const contact of validContacts) {
+          const response = await fetch("http://localhost:8000/contact/add", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(contact),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            skippedRows.push({
+              row: Object.values(contact),
+              reason: error.message,
+            });
+          }
+        }
+
+        alert("Upload complete.");
+        setSkipReport(skippedRows); // Update skip report
+      } catch (error) {
+        console.error("Error uploading contacts:", error.message);
+        alert("Failed to upload contacts. Please try again.");
+      } finally {
+        fileInputRef.current.value = ""; // Reset the file input field
+        setCsvFile(null); // Clear the file state
+      }
+    };
+
+    reader.readAsText(csvFile);
+  };
+
+  // Generate and download skip report
+  const downloadSkipReport = () => {
+    if (skipReport.length === 0) {
+      alert("No skipped rows to download.");
+      return;
+    }
+
+    const csvContent = `Row,Reason\n${skipReport
+      .map((entry) => `${entry.row.join(",")},${entry.reason}`)
+      .join("\n")}`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "skip_report.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Download sample CSV
   const downloadSampleFile = () => {
     const sampleData = `First Name,Last Name,Email,Mobile,Group\nJohn,Doe,john.doe@example.com,1234567890,Friends\nJane,Smith,jane.smith@example.com,,Family`;
     const blob = new Blob([sampleData], { type: "text/csv" });
@@ -163,78 +218,28 @@ const AddContact = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Filtering and Sorting Contacts
-  const filteredContacts = filterGroup
-    ? contacts.filter((contact) => contact.group === filterGroup)
-    : contacts;
-
-  const sortedContacts = [...filteredContacts].sort((a, b) => {
-    switch (sortOption) {
-      case "name-asc":
-        return `${a.firstName} ${a.lastName}`.localeCompare(
-          `${b.firstName} ${b.lastName}`
-        );
-      case "name-desc":
-        return `${b.firstName} ${b.lastName}`.localeCompare(
-          `${a.firstName} ${a.lastName}`
-        );
-      case "group-asc":
-        return a.group.localeCompare(b.group);
-      case "group-desc":
-        return b.group.localeCompare(a.group);
-      case "date-asc":
-        return new Date(a.creationDate) - new Date(b.creationDate);
-      case "date-desc":
-        return new Date(b.creationDate) - new Date(a.creationDate);
-      default:
-        return 0;
-    }
-  });
-
-  // Export Contacts to CSV
-  const exportContacts = () => {
-    const headers =
-      "ID,First Name,Last Name,Email,Mobile,Group,Creation Date\n";
-    const csvContent =
-      headers +
-      sortedContacts
-        .map(
-          (contact) =>
-            `${contact.id},${contact.firstName},${contact.lastName},${contact.email},${contact.mobile},${contact.group},${contact.creationDate}`
-        )
-        .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "contacts.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <>
       <Breadcrumb pageName="Add Contact" />
-      <div className="p-8 sm:p-10">
+      <div className="p-8 sm:p-10 bg-gray-100 min-h-screen">
         <h1 className="text-3xl font-bold text-blue-600 mb-6">
           Manage Your Contacts
         </h1>
 
         {/* Step 1: Create Group */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">Step 1: Create a Group</h2>
-          <div className="flex items-center gap-2">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Create a Group</h2>
+          <div className="flex gap-4">
             <input
               type="text"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Enter group name"
-              className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-grow p-3 border border-gray-300 rounded-md"
             />
             <button
               onClick={handleAddGroup}
-              className="bg-blue-600 text-white font-medium py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 flex items-center gap-1"
+              className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <FiPlus size={16} /> Add Group
             </button>
@@ -242,11 +247,9 @@ const AddContact = () => {
         </div>
 
         {/* Step 2: Add Contact */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">
-            Step 2: Add a New Contact
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Add a New Contact</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <input
               type="text"
               placeholder="First Name"
@@ -254,7 +257,7 @@ const AddContact = () => {
               onChange={(e) =>
                 setNewContact({ ...newContact, firstName: e.target.value })
               }
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="p-3 border border-gray-300 rounded-md"
             />
             <input
               type="text"
@@ -263,10 +266,10 @@ const AddContact = () => {
               onChange={(e) =>
                 setNewContact({ ...newContact, lastName: e.target.value })
               }
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="p-3 border border-gray-300 rounded-md"
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <input
               type="email"
               placeholder="Email"
@@ -274,7 +277,7 @@ const AddContact = () => {
               onChange={(e) =>
                 setNewContact({ ...newContact, email: e.target.value })
               }
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="p-3 border border-gray-300 rounded-md"
             />
             <input
               type="text"
@@ -283,14 +286,14 @@ const AddContact = () => {
               onChange={(e) =>
                 setNewContact({ ...newContact, mobile: e.target.value })
               }
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="p-3 border border-gray-300 rounded-md"
             />
             <select
               value={newContact.group}
               onChange={(e) =>
                 setNewContact({ ...newContact, group: e.target.value })
               }
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="p-3 border border-gray-300 rounded-md"
             >
               <option value="">Select Group</option>
               {groupList.map((group, index) => (
@@ -302,191 +305,46 @@ const AddContact = () => {
           </div>
           <button
             onClick={handleAddContact}
-            className="mt-3 bg-blue-600 text-white font-medium py-2 px-3 rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 flex items-center gap-1"
+            className="bg-blue-600 text-white py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 flex items-center gap-2"
           >
             <FiPlus size={16} /> Add Contact
           </button>
         </div>
 
-        {/* Additional Option: Upload Contacts */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">
+        {/* Upload Contacts */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">
             Upload Contacts via CSV
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
             <input
               type="file"
               accept=".csv"
-              onChange={handleFileUpload}
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onChange={handleFileSelect}
+              className="p-3 border border-gray-300 rounded-md w-full sm:w-auto"
+              ref={fileInputRef}
             />
             <button
+              onClick={handleFileUpload}
+              className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
+              <FiUpload size={16} /> Upload
+            </button>
+            <button
               onClick={downloadSampleFile}
-              className="bg-gray-600 text-white font-medium py-2 px-3 rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 flex items-center gap-1"
+              className="bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 flex items-center gap-2"
             >
               <FiDownload size={16} /> Download Sample
             </button>
-          </div>
-        </div>
-
-        {/* Contacts List */}
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <h2 className="text-xl font-semibold mb-3">Contacts</h2>
-          <div className="flex items-center gap-2 mb-3">
-            <select
-              value={filterGroup}
-              onChange={(e) => setFilterGroup(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Filter by Group</option>
-              {groupList.map((group, index) => (
-                <option key={index} value={group}>
-                  {group}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="name-asc">Sort by Name (A-Z)</option>
-              <option value="name-desc">Sort by Name (Z-A)</option>
-              <option value="group-asc">Sort by Group (A-Z)</option>
-              <option value="group-desc">Sort by Group (Z-A)</option>
-              <option value="date-asc">Sort by Date (Oldest First)</option>
-              <option value="date-desc">Sort by Date (Newest First)</option>
-            </select>
             <button
-              onClick={exportContacts}
-              className="bg-gray-600 text-white font-medium py-2 px-3 rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 flex items-center gap-1"
+              onClick={downloadSkipReport}
+              className="bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 flex items-center gap-2"
             >
-              <FiArrowDownCircle size={16} /> Export
+              <FiDownload size={16} /> Download Skip Report
             </button>
           </div>
-
-          {/* Contacts Table */}
-          <table className="w-full border border-gray-300 rounded-md shadow-md text-sm">
-            <thead>
-              <tr className="bg-gray-200 text-left">
-                <th className="p-2">ID</th>
-                <th className="p-2">First Name</th>
-                <th className="p-2">Last Name</th>
-                <th className="p-2">Email</th>
-                <th className="p-2">Mobile</th>
-                <th className="p-2">Group</th>
-                <th className="p-2">Date</th>
-                <th className="p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedContacts.map((contact, index) => (
-                <tr
-                  key={index}
-                  className="border-t hover:bg-gray-100 transition-colors"
-                >
-                  <td className="p-2">{contact.id}</td>
-                  <td className="p-2">{contact.firstName}</td>
-                  <td className="p-2">{contact.lastName}</td>
-                  <td className="p-2">{contact.email}</td>
-                  <td className="p-2">{contact.mobile}</td>
-                  <td className="p-2">{contact.group}</td>
-                  <td className="p-2">{contact.creationDate}</td>
-                  <td className="p-2 flex gap-2">
-                    <button
-                      onClick={() => openEditModal(contact)}
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                      <FiEdit size={14} /> Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteContact(index)}
-                      className="text-red-600 hover:text-red-800 flex items-center gap-1"
-                    >
-                      <FiTrash size={14} /> Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
-
-      {/* Edit Contact Modal */}
-      {editContact && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg p-8 shadow-lg w-3/4 sm:w-1/2">
-            <h2 className="text-2xl font-semibold mb-4">Edit Contact</h2>
-            <div className="flex flex-col gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="First Name"
-                value={editContact.firstName}
-                onChange={(e) =>
-                  setEditContact({ ...editContact, firstName: e.target.value })
-                }
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                value={editContact.lastName}
-                onChange={(e) =>
-                  setEditContact({ ...editContact, lastName: e.target.value })
-                }
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={editContact.email}
-                onChange={(e) =>
-                  setEditContact({ ...editContact, email: e.target.value })
-                }
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Mobile Number"
-                value={editContact.mobile}
-                onChange={(e) =>
-                  setEditContact({ ...editContact, mobile: e.target.value })
-                }
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <select
-                value={editContact.group}
-                onChange={(e) =>
-                  setEditContact({ ...editContact, group: e.target.value })
-                }
-                className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">Select Group</option>
-                {groupList.map((group, index) => (
-                  <option key={index} value={group}>
-                    {group}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={closeEditModal}
-                className="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
