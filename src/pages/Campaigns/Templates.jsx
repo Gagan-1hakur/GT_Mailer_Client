@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   HiOutlineDocumentAdd,
   HiOutlineTrash,
@@ -7,13 +8,26 @@ import {
 } from "react-icons/hi";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
 
-let templateIdCounter = 1; // Counter for unique numerical ID
-
 const Templates = () => {
   const [templates, setTemplates] = useState([]);
   const [previewTemplate, setPreviewTemplate] = useState(null); // For preview modal
   const [uploadedFile, setUploadedFile] = useState(null);
   const [fileContent, setFileContent] = useState("");
+
+  const API_BASE_URL = "http://localhost:8000/templates"; // Update to your backend URL
+
+  // Fetch templates from the backend
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const response = await axios.get(API_BASE_URL);
+        setTemplates(response.data);
+      } catch (error) {
+        console.error("Error fetching templates:", error);
+      }
+    };
+    fetchTemplates();
+  }, []);
 
   // Handle file upload
   const handleFileUpload = (event) => {
@@ -31,27 +45,37 @@ const Templates = () => {
   };
 
   // Save uploaded template
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
     if (!uploadedFile || !fileContent) {
       alert("No template to save. Please upload a valid HTML file.");
       return;
     }
 
     const newTemplate = {
-      id: templateIdCounter++,
       name: uploadedFile,
       content: fileContent,
     };
 
-    setTemplates((prevTemplates) => [...prevTemplates, newTemplate]);
-    setUploadedFile(null);
-    setFileContent("");
+    try {
+      const response = await axios.post(API_BASE_URL, newTemplate);
+      setTemplates((prevTemplates) => [...prevTemplates, response.data]);
+      setUploadedFile(null);
+      setFileContent("");
+    } catch (error) {
+      console.error("Error saving template:", error);
+    }
   };
 
   // Delete a template
-  const deleteTemplate = (id) => {
-    const updatedTemplates = templates.filter((template) => template.id !== id);
-    setTemplates(updatedTemplates);
+  const deleteTemplate = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/${id}`);
+      setTemplates((prevTemplates) =>
+        prevTemplates.filter((template) => template._id !== id)
+      );
+    } catch (error) {
+      console.error("Error deleting template:", error);
+    }
   };
 
   // Export template as an HTML file
@@ -77,7 +101,6 @@ const Templates = () => {
 
   return (
     <>
-      {/* Breadcrumb Section */}
       <Breadcrumb pageName="Manage Templates" />
       <div className="p-8 sm:p-10 bg-gray-100">
         <h1 className="text-3xl font-bold text-blue-600 mb-6 flex items-center gap-2">
@@ -109,7 +132,8 @@ const Templates = () => {
           </div>
           {uploadedFile && (
             <p className="mt-2 text-sm text-gray-600">
-              Uploaded File: <span className="font-semibold">{uploadedFile}</span>
+              Uploaded File:{" "}
+              <span className="font-semibold">{uploadedFile}</span>
             </p>
           )}
         </div>
@@ -126,20 +150,17 @@ const Templates = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {templates.map((template) => (
                 <div
-                  key={template.id}
+                  key={template._id}
                   className="border border-gray-300 rounded-lg bg-white shadow-md hover:shadow-lg transition-shadow duration-300 p-4 relative group"
                 >
-                  {/* Header */}
                   <h3 className="text-lg font-medium text-gray-800 mb-2 truncate">
                     {template.name}
                   </h3>
-                  {/* Content Preview */}
                   <div
                     className="overflow-hidden border-t pt-2 mb-4 text-sm text-gray-700"
                     style={{ maxHeight: "150px" }}
                     dangerouslySetInnerHTML={{ __html: template.content }}
                   />
-                  {/* Actions */}
                   <div className="flex justify-between">
                     <button
                       className="text-green-500 hover:text-green-700 bg-gray-50 p-2 rounded-md shadow-md flex items-center gap-1"
@@ -160,7 +181,7 @@ const Templates = () => {
                       </button>
                       <button
                         className="text-red-500 hover:text-red-700 bg-gray-50 p-2 rounded-md shadow-md flex items-center gap-1"
-                        onClick={() => deleteTemplate(template.id)}
+                        onClick={() => deleteTemplate(template._id)}
                         title="Delete Template"
                       >
                         <HiOutlineTrash size={18} />
