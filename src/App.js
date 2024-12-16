@@ -7,6 +7,8 @@ import Loader from "./components/Loader";
 import AddContact from "./pages/Audience/AddContact";
 import ViewContacts from "./pages/Audience/ViewContacts";
 import Templates from "./pages/Campaigns/Templates";
+import EmailCampaign from "./pages/Campaigns/EmailCampaign";
+import Campaign from "./pages/Campaigns/Campaign";
 // import PageTitle from './components/PageTitle';
 
 // import Calendar from './pages/Calendar';
@@ -49,6 +51,12 @@ function App() {
             <Route path="/audience/addContact" element={<AddContact />} />
             <Route path="/audience/viewContacts" element={<ViewContacts />} />
             <Route path="/campaigns/templates" element={<Templates />} />
+            <Route
+              path="/campaigns/EmailCampaign"
+              element={<EmailCampaign />}
+            />
+            <Route path="/campaigns/campaign" element={<Campaign />} />
+
             {/* Other routes go here */}
           </Routes>
         </DefaultLayout>
