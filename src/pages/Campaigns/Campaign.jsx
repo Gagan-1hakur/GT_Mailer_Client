@@ -9,25 +9,53 @@ const CampaignNamePage = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [activeStep, setActiveStep] = useState(null);
   const [editingCampaign, setEditingCampaign] = useState(null);
-  const [contacts, setContacts] = useState([]);
+
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filteredContacts, setFilteredContacts] = useState([]);
+  const [groups, setGroups] = useState([]);
+
+  const [contacts, setContacts] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
+
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/contact/groups");
+      const data = await response.json();
+      setGroups(data.groups || []);
+      console.log(data);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
 
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const response = await axios.get("http://localhost:8000/contact/all");
-        const data = Array.isArray(response.data) ? response.data : [];
-        setContacts(data);
+        console.log("Selected group", selectedGroup);
+        const response = await axios.get(
+          `http://localhost:8000/contact/contacts-by-group?groupName=${selectedGroup}`
+        );
+        setContacts(response?.data?.data);
+        console.log(response);
       } catch (error) {
         console.error("Error fetching contacts:", error);
         setContacts([]); // Default to an empty array in case of an error
       }
     };
-
     fetchContacts();
-  }, []);
+  }, [selectedGroup]);
+
+  const handleGroupFilter = (group) => {
+    setSelectedGroup(group);
+
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -92,16 +120,31 @@ const CampaignNamePage = () => {
       content: (
         <div>
           <h3 className="text-lg font-semibold mb-4">Select Recipients</h3>
+          <select
+            value={selectedGroup}
+            onChange={(e) => handleGroupFilter(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All Groups</option>
+            {groups.map((group, index) => (
+              <option key={index} value={group}>
+                {group}
+              </option>
+            ))}
+          </select>
+          <p className="text-lg font-medium">
+            Total Contacts: {contacts.length}
+          </p>
           {Array.isArray(contacts) && contacts.length > 0 ? (
             <ul className="divide-y divide-gray-200">
               {contacts.map((contact) => (
                 <li
-                  key={contact.id}
+                  key={contact._id}
                   className="py-4 flex justify-between items-center"
                 >
                   <div>
                     <h4 className="font-medium text-gray-800">
-                      {contact.name}
+                      {contact.firstName + " " + contact.lastName}
                     </h4>
                     <p className="text-sm text-gray-500">{contact.email}</p>
                   </div>
@@ -109,7 +152,7 @@ const CampaignNamePage = () => {
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500">No contacts found.</p>
+            <p>No contacts found.</p>
           )}
         </div>
       ),
@@ -175,7 +218,7 @@ const CampaignNamePage = () => {
             >
               <option value="">-- Select a Template --</option>
               {templates.map((template) => (
-                <option key={template.id} value={template.id}>
+                <option key={template._id} value={template._id}>
                   {template.name}
                 </option>
               ))}

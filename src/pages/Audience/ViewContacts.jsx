@@ -50,6 +50,7 @@ const ViewContacts = () => {
       const response = await fetch("http://localhost:8000/contact/groups");
       const data = await response.json();
       setGroups(data.groups || []);
+      console.log(data);
     } catch (error) {
       console.error("Error fetching groups:", error);
     }
