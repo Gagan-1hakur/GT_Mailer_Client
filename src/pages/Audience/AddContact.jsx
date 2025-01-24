@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiPlus, FiDownload, FiUpload } from "react-icons/fi";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
+import axios from "axios";
 
 const AddContact = () => {
   const [groupName, setGroupName] = useState("");
@@ -23,32 +24,45 @@ const AddContact = () => {
   // Fetch groups from backend
   const fetchGroups = async () => {
     try {
-      const response = await fetch("http://localhost:8000/contact/groups");
-      const data = await response.json();
-      if (response.ok) {
-        setGroupList(data.groups || []);
-      } else {
-        console.error("Failed to fetch groups:", data.message);
-      }
+      const response = await axios.get("http://localhost:8000/groups");
+      const groups = response.data;
+      console.log(groups);
+      setGroupList(groups);
     } catch (error) {
       console.error("Error fetching groups:", error.message);
     }
   };
 
   // Handle adding a new group
-  const handleAddGroup = () => {
-    if (!groupName.trim()) {
-      alert("Group name cannot be empty.");
-      return;
-    }
+  const handleAddGroup = async () => {
+    try {
+      // Validate that groupName is not empty
+      if (!groupName.trim()) {
+        alert("Group name cannot be empty.");
+        return;
+      }
 
-    if (groupList.includes(groupName)) {
-      alert("This group name already exists.");
-      return;
-    }
+      // Check if the group name already exists
+      const isDuplicate = groupList.some(
+        (group) => group.name === groupName.trim()
+      );
+      if (isDuplicate) {
+        alert("This group name already exists.");
+        return;
+      }
 
-    setGroupList([...groupList, groupName]);
-    setGroupName("");
+      // Send request to the server to add the new group
+      await axios.post("http://localhost:8000/groups", {
+        name: groupName.trim(),
+      });
+
+      // Clear the input field and fetch updated groups
+      setGroupName("");
+      fetchGroups();
+    } catch (error) {
+      console.error("Error adding group:", error.message);
+      alert("Failed to add group. Please try again.");
+    }
   };
 
   // Handle adding a new contact
@@ -71,7 +85,13 @@ const AddContact = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ firstName, lastName, email, mobile, group }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          mobile,
+          group: { id: JSON.parse(group)._id, name: JSON.parse(group).name },
+        }),
       });
 
       if (response.ok) {
@@ -296,9 +316,10 @@ const AddContact = () => {
               className="p-3 border border-gray-300 rounded-md"
             >
               <option value="">Select Group</option>
+              {console.log(groupList)}
               {groupList.map((group, index) => (
-                <option key={index} value={group}>
-                  {group}
+                <option key={index} value={JSON.stringify(group)}>
+                  {group.name}
                 </option>
               ))}
             </select>

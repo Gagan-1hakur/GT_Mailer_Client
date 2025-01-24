@@ -47,7 +47,7 @@ const ViewContacts = () => {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch("http://localhost:8000/contact/groups");
+      const response = await fetch("http://localhost:8000/groups");
       const data = await response.json();
       setGroups(data.groups || []);
       console.log(data);
@@ -59,7 +59,7 @@ const ViewContacts = () => {
   const handleGroupFilter = (group) => {
     setSelectedGroup(group);
     const filtered = group
-      ? contacts.filter((contact) => contact.group === group)
+      ? contacts.filter((contact) => (contact.group.id = group))
       : contacts;
     setFilteredContacts(filtered);
     setCurrentPage(1);
@@ -255,7 +255,7 @@ const ViewContacts = () => {
             <option value="">All Groups</option>
             {groups.map((group, index) => (
               <option key={index} value={group}>
-                {group}
+                {group.name}
               </option>
             ))}
           </select>
@@ -282,7 +282,7 @@ const ViewContacts = () => {
               <option value="">Change Group</option>
               {groups.map((group, index) => (
                 <option key={index} value={group}>
-                  {group}
+                  {group.name}
                 </option>
               ))}
             </select>
@@ -463,7 +463,7 @@ const ViewContacts = () => {
               <option value="">Select Group</option>
               {groups.map((group, index) => (
                 <option key={index} value={group}>
-                  {group}
+                  {group.name}
                 </option>
               ))}
             </select>
