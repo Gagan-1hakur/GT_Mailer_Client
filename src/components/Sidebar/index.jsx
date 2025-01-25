@@ -284,7 +284,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                           }`}
                         />
                       </NavLink>
-                      {/* <!-- Dropdown Menu Start --> */}
                       <div
                         className={`translate transform overflow-hidden ${
                           !open && "hidden"
@@ -313,7 +312,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                               Email Campaign
                             </NavLink>
                           </li>
-                          <li>
+                          {/* <li>
                             <NavLink
                               to="/campaigns/campaign"
                               className={({ isActive }) =>
@@ -323,11 +322,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                             >
                               Campaign
                             </NavLink>
-                          </li>
+                          </li> */}
                         </ul>
                       </div>
-
-                      {/* <!-- Dropdown Menu End --> */}
                     </React.Fragment>
                   );
                 }}

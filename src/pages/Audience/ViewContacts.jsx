@@ -7,6 +7,7 @@ import {
   FiDownload,
 } from "react-icons/fi";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
+import axios from "axios";
 
 const ViewContacts = () => {
   const [contacts, setContacts] = useState([]);
@@ -24,14 +25,6 @@ const ViewContacts = () => {
   useEffect(() => {
     fetchContacts();
     fetchGroups();
-
-    // Poll for updates every 30 seconds
-    const interval = setInterval(() => {
-      fetchContacts();
-      fetchGroups();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval); // Clear interval on unmount
   }, []);
 
   const fetchContacts = async () => {
@@ -49,20 +42,29 @@ const ViewContacts = () => {
     try {
       const response = await fetch("http://localhost:8000/groups");
       const data = await response.json();
-      setGroups(data.groups || []);
-      console.log(data);
+      setGroups(data || []);
     } catch (error) {
       console.error("Error fetching groups:", error);
     }
   };
 
-  const handleGroupFilter = (group) => {
-    setSelectedGroup(group);
-    const filtered = group
-      ? contacts.filter((contact) => (contact.group.id = group))
-      : contacts;
-    setFilteredContacts(filtered);
-    setCurrentPage(1);
+  const handleGroupFilter = async (groupId) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/contact/contacts-by-group/${
+          !groupId ? "all" : groupId
+        }`
+      );
+
+      setSelectedGroup(groupId);
+      // const filtered = groupId
+      //   ? contacts.filter((contact) => contact.group.id === groupId)
+      //   : contacts;
+      setFilteredContacts(response.data.data || []);
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    }
   };
 
   const handleEditContact = (contact) => {
@@ -76,7 +78,13 @@ const ViewContacts = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editContact),
+          body: JSON.stringify({
+            ...editContact,
+            group: {
+              id: JSON.parse(editContact.group)._id,
+              name: JSON.parse(editContact.group).name,
+            },
+          }),
         }
       );
       if (response.ok) {
@@ -86,6 +94,7 @@ const ViewContacts = () => {
         setContacts(updatedContacts);
         setFilteredContacts(updatedContacts);
         setEditContact(null);
+        fetchContacts();
         alert("Contact updated successfully!");
       } else {
         alert("Failed to update contact.");
@@ -133,18 +142,16 @@ const ViewContacts = () => {
   };
 
   const handleChangeGroup = async () => {
-    if (!newGroup.trim()) {
-      alert("Please select a valid group.");
-      return;
-    }
-
+    const parsedNewGroup = JSON.parse(newGroup);
     if (window.confirm("Are you sure you want to change the group?")) {
       try {
         for (const id of selectedContacts) {
           await fetch(`http://localhost:8000/contact/edit/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ group: newGroup }),
+            body: JSON.stringify({
+              group: { id: parsedNewGroup._id, name: parsedNewGroup.name },
+            }),
           });
         }
         fetchContacts(); // Refresh contacts
@@ -249,12 +256,14 @@ const ViewContacts = () => {
         <div className="flex items-center justify-between mb-6">
           <select
             value={selectedGroup}
-            onChange={(e) => handleGroupFilter(e.target.value)}
+            onChange={(e) => {
+              handleGroupFilter(e.target.value);
+            }}
             className="p-2 border border-gray-300 rounded-md"
           >
             <option value="">All Groups</option>
             {groups.map((group, index) => (
-              <option key={index} value={group}>
+              <option key={index} value={group._id}>
                 {group.name}
               </option>
             ))}
@@ -281,7 +290,7 @@ const ViewContacts = () => {
             >
               <option value="">Change Group</option>
               {groups.map((group, index) => (
-                <option key={index} value={group}>
+                <option key={index} value={JSON.stringify(group)}>
                   {group.name}
                 </option>
               ))}
@@ -311,7 +320,6 @@ const ViewContacts = () => {
                   onChange={handleSelectAll}
                 />
               </th>
-              {/* icon */}
               <th
                 className="p-4 cursor-pointer flex items-center"
                 onClick={() => handleSort("name")}
@@ -324,7 +332,6 @@ const ViewContacts = () => {
                     <FiArrowDown />
                   ))}
               </th>
-              {/* name */}
               <th className="p-4">Email</th>
               <th className="p-4">Mobile</th>
               <th
@@ -339,7 +346,6 @@ const ViewContacts = () => {
                     <FiArrowDown />
                   ))}
               </th>
-              {/* Group */}
               <th
                 className="p-4 cursor-pointer"
                 onClick={() => handleSort("date")}
@@ -352,7 +358,6 @@ const ViewContacts = () => {
                     <FiArrowDown />
                   ))}
               </th>
-              {/* Date */}
               <th className="p-4">Actions</th>
             </tr>
           </thead>
@@ -369,7 +374,7 @@ const ViewContacts = () => {
                 <td className="p-4">{`${contact.firstName} ${contact.lastName}`}</td>
                 <td className="p-4">{contact.email}</td>
                 <td className="p-4">{contact.mobile || "N/A"}</td>
-                <td className="p-4">{contact.group || "N/A"}</td>
+                <td className="p-4">{contact.group.name || "N/A"}</td>
                 <td className="p-4">
                   {new Date(contact.creationDate).toLocaleString()}
                 </td>
@@ -462,7 +467,7 @@ const ViewContacts = () => {
             >
               <option value="">Select Group</option>
               {groups.map((group, index) => (
-                <option key={index} value={group}>
+                <option key={index} value={JSON.stringify(group)}>
                   {group.name}
                 </option>
               ))}

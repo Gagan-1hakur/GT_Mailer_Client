@@ -25,6 +25,7 @@ const EmailCampaign = () => {
     const fetchGroups = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/groups`);
+        console.log(response.data);
         setGroups(response.data);
       } catch (error) {
         console.error("Error fetching groups:", error);
@@ -49,9 +50,11 @@ const EmailCampaign = () => {
       if (selectedGroup) {
         try {
           const response = await axios.get(
-            `${API_BASE_URL}/groups/${selectedGroup}/contacts`
+            `http://localhost:8000/contact/contacts-by-group/${
+              !selectedGroup ? "all" : selectedGroup
+            }`
           );
-          setContacts(response.data);
+          setContacts(response.data.data);
         } catch (error) {
           console.error("Error fetching contacts:", error);
           setContacts([]);
@@ -79,8 +82,15 @@ const EmailCampaign = () => {
     setIsSending(true);
     setMessage("");
 
+    console.log({
+      campaignName,
+      senderEmail,
+      subjectLine,
+      groupId: selectedGroup,
+      templateId: selectedTemplate,
+    });
     try {
-      const response = await axios.post(`${API_BASE_URL}/send-bulk-email`, {
+      const response = await axios.post(`${API_BASE_URL}/campaign/send-mail`, {
         campaignName,
         senderEmail,
         subjectLine,
@@ -149,9 +159,10 @@ const EmailCampaign = () => {
             className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
+            // multiple
           >
             <option value="">-- Select a Group --</option>
-            {groups.map((group) => (
+            {groups?.map((group) => (
               <option key={group._id} value={group._id}>
                 {group.name}
               </option>
@@ -160,20 +171,18 @@ const EmailCampaign = () => {
         </div>
 
         {/* Display Contacts */}
-        {contacts.length > 0 && (
+        {/* {contacts.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-lg font-semibold mb-4">
               Contacts in Selected Group
             </h2>
             <ul className="list-disc pl-5">
               {contacts.map((contact) => (
-                <li key={contact._id}>
-                  {contact.name} - {contact.email}
-                </li>
+                <li key={contact._id}>{contact.email}</li>
               ))}
             </ul>
           </div>
-        )}
+        )} */}
 
         {/* Select Template */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
