@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Breadcrumb from "../../components/Breadcrumbs/Breadcrumb";
-import {
-  HiOutlineMail,
-  // HiOutlineUserGroup,
-  // HiOutlineDocumentAdd,
-} from "react-icons/hi";
+import { HiOutlineMail } from "react-icons/hi";
+import Select from "react-select";
 
 const EmailCampaign = () => {
   const [campaignName, setCampaignName] = useState("");
   const [groups, setGroups] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [contacts, setContacts] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [subjectLine, setSubjectLine] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState("");
+  const [emailCount, setEmailCount] = useState(0);
 
   const API_BASE_URL = "http://localhost:8000";
 
@@ -25,7 +23,6 @@ const EmailCampaign = () => {
     const fetchGroups = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/groups`);
-        console.log(response.data);
         setGroups(response.data);
       } catch (error) {
         console.error("Error fetching groups:", error);
@@ -45,34 +42,45 @@ const EmailCampaign = () => {
     fetchTemplates();
   }, []);
 
-  useEffect(() => {
-    const fetchContacts = async () => {
-      if (selectedGroup) {
-        try {
-          const response = await axios.get(
-            `http://localhost:8000/contact/contacts-by-group/${
-              !selectedGroup ? "all" : selectedGroup
-            }`
-          );
-          setContacts(response.data.data);
-        } catch (error) {
-          console.error("Error fetching contacts:", error);
-          setContacts([]);
-        }
-      } else {
-        setContacts([]);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchContacts = async () => {
+  //     if (selectedGroupIds.length > 0) {
+  //       try {
+  //         const response = await axios.get(
+  //           `${API_BASE_URL}/contact/contacts-by-group/${selectedGroup}`
+  //         );
+  //         console.log(selectedGroup);
+  //         setGroups(
+  //           groups.map((group) => {
+  //             if (group._id === selectedGroup) {
+  //               return {
+  //                 ...group,
+  //                 contactCount: response.data.data.length,
+  //               };
+  //             }
+  //             return group;
+  //           })
+  //         );
+  //         setEmailCount(response.data.data.length);
+  //       } catch (error) {
+  //         console.error("Error fetching contacts:", error);
+  //         setEmailCount(0);
+  //       }
+  //     } else {
+  //       setEmailCount(0);
+  //     }
+  //   };
 
-    fetchContacts();
-  }, [selectedGroup]);
+  //   fetchContacts();
+  // }, [selectedGroupIds]);
 
   const handleSendEmail = async () => {
+    console.log(selectedGroupIds);
     if (
       !campaignName ||
       !senderEmail ||
       !subjectLine ||
-      !selectedGroup ||
+      !selectedGroupIds ||
       !selectedTemplate
     ) {
       alert("Please fill in all required fields.");
@@ -82,23 +90,23 @@ const EmailCampaign = () => {
     setIsSending(true);
     setMessage("");
 
-    console.log({
-      campaignName,
-      senderEmail,
-      subjectLine,
-      groupId: selectedGroup,
-      templateId: selectedTemplate,
-    });
     try {
       const response = await axios.post(`${API_BASE_URL}/campaign/send-mail`, {
         campaignName,
         senderEmail,
         subjectLine,
-        groupId: selectedGroup,
+        groupIds: selectedGroupIds?.map((group) => group.value),
         templateId: selectedTemplate,
       });
 
       setMessage(response.data.message || "Emails sent successfully!");
+      // Reset form fields
+      setCampaignName("");
+      setSelectedGroup("");
+      setSelectedTemplate("");
+      setSenderEmail("");
+      setSubjectLine("");
+      setSelectedGroupIds([]);
     } catch (error) {
       console.error("Error sending emails:", error);
       setMessage("Failed to send emails. Please try again.");
@@ -107,6 +115,11 @@ const EmailCampaign = () => {
     }
   };
 
+  const handleGroupChange = (selectedOptions) => {
+    console.log(selectedOptions);
+
+    setSelectedGroupIds(selectedOptions);
+  };
   return (
     <>
       <Breadcrumb pageName="Email Campaign" />
@@ -155,34 +168,26 @@ const EmailCampaign = () => {
         {/* Select Group */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Select Contact Group</h2>
-          <select
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
-            // multiple
-          >
-            <option value="">-- Select a Group --</option>
-            {groups?.map((group) => (
-              <option key={group._id} value={group._id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        {/* Display Contacts */}
-        {/* {contacts.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">
-              Contacts in Selected Group
-            </h2>
-            <ul className="list-disc pl-5">
-              {contacts.map((contact) => (
-                <li key={contact._id}>{contact.email}</li>
-              ))}
-            </ul>
-          </div>
-        )} */}
+          <Select
+            options={groups?.map((group) => ({
+              value: group._id, // Correctly set 'value' for the option
+              label: group.name,
+            }))}
+            isMulti // Enable multi-select
+            value={selectedGroupIds} // Controlled component
+            onChange={handleGroupChange}
+            placeholder="Select groups..."
+            className="basic-multi-select"
+            classNamePrefix="select"
+          />
+
+          {/* {selectedGroupIds.length > 0 && (
+            <p className="mt-2 text-sm text-gray-600">
+              Total emails in this group: {emailCount}
+            </p>
+          )} */}
+        </div>
 
         {/* Select Template */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
