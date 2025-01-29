@@ -146,7 +146,11 @@ const AddContact = () => {
     };
   };
 
-  // Handle file upload
+  // Helper function to get group object by name
+  const getGroupByName = (groupName) => {
+    return groupList.find((group) => group.name === groupName) || null;
+  };
+
   const handleFileUpload = async () => {
     if (!csvFile) {
       alert("Please select a CSV file first.");
@@ -162,7 +166,20 @@ const AddContact = () => {
       for (const row of rows.slice(1)) {
         const validation = validateCsvRow(row);
         if (validation.valid) {
-          validContacts.push(validation.contact);
+          const groupObj = getGroupByName(validation.contact.group); // Get group details
+
+          if (!groupObj) {
+            skippedRows.push({
+              row,
+              reason: "Group not found",
+            });
+            continue;
+          }
+
+          validContacts.push({
+            ...validation.contact,
+            group: { id: groupObj._id, name: groupObj.name }, // Correct format
+          });
         } else {
           skippedRows.push({ row, reason: validation.reason });
         }
@@ -194,13 +211,13 @@ const AddContact = () => {
         }
 
         alert("Upload complete.");
-        setSkipReport(skippedRows); // Update skip report
+        setSkipReport(skippedRows);
       } catch (error) {
         console.error("Error uploading contacts:", error.message);
         alert("Failed to upload contacts. Please try again.");
       } finally {
-        fileInputRef.current.value = ""; // Reset the file input field
-        setCsvFile(null); // Clear the file state
+        fileInputRef.current.value = "";
+        setCsvFile(null);
       }
     };
 

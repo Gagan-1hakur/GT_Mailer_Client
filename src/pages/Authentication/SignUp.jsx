@@ -13,7 +13,6 @@ const SignUp = () => {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm();
 
   const onSubmit = async (data) => {
